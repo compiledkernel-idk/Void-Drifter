@@ -36,3 +36,7 @@ Thumbs.db
 # Screenshots (keep only image.png)
 Screenshot*.png
 screenshot*.png
+
+# Release tarballs
+*.tar.gz
+*.zip
