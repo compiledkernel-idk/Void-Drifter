@@ -13,6 +13,7 @@ extern SDL_RenderClear
 extern SDL_RenderDrawLine
 extern SDL_RenderDrawPoint
 extern SDL_RenderPresent
+extern SDL_RenderFillRect
 extern SDL_PollEvent
 extern SDL_Quit
 extern SDL_Delay
@@ -45,7 +46,8 @@ section .data
     
     ; State
     running db 1
-    game_state db 0 ; 0=Playing, 1=GameOver
+    game_state db 2  ; 0=playing, 1=game_over, 2=menu, 3=about
+    menu_selection db 0  ; 0=Play, 1=About
     shoot_timer db 0
     spawn_timer db 0
     
@@ -142,18 +144,19 @@ main:
     
     ; Check for restart
     cmp byte [game_state], 1
-    jne .normal_update
+    jne .check_play
     cmp byte [key_r], 1
     jne .skip_update
     
-    ; Reset game state
-    mov byte [game_state], 0
+    ; Reset game state - go to menu, not directly to game
+    mov byte [game_state], 2  ; Back to menu
     mov dword [score], 0
     mov dword [player_lives], 5
     mov dword [difficulty_level], 0
     mov byte [shoot_timer], 0
     mov byte [spawn_timer], 0
     mov byte [key_r], 0
+    jmp .skip_update
     
     ; Reset player position
     mov dword [player_x], 0
@@ -189,21 +192,18 @@ main:
     lea rbx, [explosions]
 .clear_explosions_loop:
     cmp rcx, 10
-    je .normal_update
+    je .skip_update
     mov dword [rbx + 12], 0
     add rbx, 16
     inc rcx
     jmp .clear_explosions_loop
     
-.normal_update:
-    ; Reinit stars - DISABLED
-    ; call init_stars
-    
+.check_play:
     cmp byte [game_state], 0
     jne .skip_update
     call update
+    
 .skip_update:
-
     call render
     
     mov rdi, 16
@@ -221,6 +221,84 @@ main:
 process_events:
     push rbp
     mov rbp, rsp
+    
+    ; Check current game state for input handling
+    mov al, [game_state]
+    cmp al, 2  ; Menu state?
+    je .menu_input
+    cmp al, 3  ; About state?
+    je .about_input
+    ; Otherwise normal gameplay input
+    jmp .normal_input
+    
+; ===== MENU INPUT =====
+.menu_input:
+.poll_menu:
+    mov rdi, event
+    call SDL_PollEvent
+    test eax, eax
+    jz .done
+    
+    mov eax, [event]
+    cmp eax, 0x100 ; QUIT
+    je .do_quit
+    cmp eax, 0x300 ; KEYDOWN
+    jne .poll_menu
+    
+    mov eax, [event + 20]
+    cmp eax, 119 ; w
+    je .menu_up
+    cmp eax, 115 ; s
+    je .menu_down
+    cmp eax, 32  ; SPACE
+    je .menu_select
+    cmp eax, 27  ; ESC
+    je .do_quit
+    jmp .poll_menu
+    
+.menu_up:
+    mov byte [menu_selection], 0
+    jmp .poll_menu
+.menu_down:
+    mov byte [menu_selection], 1
+    jmp .poll_menu
+.menu_select:
+    ; Check selection: 0=Play, 1=About
+    cmp byte [menu_selection], 0
+    je .start_game
+    mov byte [game_state], 3  ; Go to about
+    jmp .poll_menu
+.start_game:
+    mov byte [game_state], 0  ; Start playing
+    jmp .poll_menu
+    
+; ===== ABOUT INPUT =====
+.about_input:
+.poll_about:
+    lea rdi, [event]
+    call SDL_PollEvent
+    test eax, eax
+    jz .done
+    
+    mov eax, [event]
+    cmp eax, 0x100 ; QUIT
+    je .do_quit
+    cmp eax, 0x300  ; KEYDOWN
+    jne .poll_about
+    
+    mov eax, [event + 20]
+    cmp eax, 32  ; SPACE
+    je .about_back
+    cmp eax, 27  ; ESC
+    je .about_back
+    jmp .poll_about
+    
+.about_back:
+    mov byte [game_state], 2  ; Back to menu
+    jmp .poll_about
+
+; ===== NORMAL GAMEPLAY INPUT =====
+.normal_input:
     
 .poll:
     mov rdi, event
@@ -769,14 +847,110 @@ section .data
     one_float dd 1.0
     diff_scale dd 0.2
     half_float dd 0.5
-
 section .text
 
 render:
-    push rbp
-    mov rbp, rsp
-    sub rsp, 128 ; Stack space
-    
+    ; Check game state
+    mov al, [game_state]
+    cmp al, 1  ; Game Over
+    je .game_over_screen
+    cmp al, 2
+    je .draw_menu
+    cmp al, 3
+    je .draw_about
+    ; State 0 - normal gameplay
+    jmp .draw_gameplay
+
+.draw_menu:
+    ; Simple menu screen: clear to blue background
+    mov rdi, [renderer]
+    mov rsi, 50
+    mov rdx, 50
+    mov rcx, 150
+    mov r8, 255
+    call SDL_SetRenderDrawColor
+    mov rdi, [renderer]
+    call SDL_RenderClear
+    ; Show menu options (Play / About) using simple rectangles
+    ; Title bar
+    mov rdi, [renderer]
+    mov rsi, 0
+    mov rdx, 255
+    mov rcx, 255
+    mov r8, 255
+    call SDL_SetRenderDrawColor
+    ; Draw title rectangle
+; SDL_RenderFillRect calls commented out - using line draws instead
+;    mov rdi, [renderer]
+;    mov esi, 250
+;    mov edx, 150
+;    mov ecx, 300
+;    mov r8d, 40
+;    call SDL_RenderFillRect
+;    ; Play option rectangle
+;    mov rdi, [renderer]
+;    mov esi, 300
+;    mov edx, 250
+;    mov ecx, 200
+;    mov r8d, 30
+;    call SDL_RenderFillRect
+;    ; About option rectangle
+;    mov rdi, [renderer]
+;    mov esi, 300
+;    mov edx, 300
+;    mov ecx, 200
+;    mov r8d, 30
+;    call SDL_RenderFillRect
+    jmp .present
+
+.draw_about:
+    ; Simple about screen: clear to orange background
+    mov rdi, [renderer]
+    mov rsi, 200
+    mov rdx, 100
+    mov rcx, 50
+    mov r8, 255
+    call SDL_SetRenderDrawColor
+    mov rdi, [renderer]
+    call SDL_RenderClear
+    ; Display placeholder text as rectangles (lines)
+    mov rdi, [renderer]
+    mov rsi, 180
+    mov rdx, 180
+    mov rcx, 180
+    mov r8, 255
+    call SDL_SetRenderDrawColor
+    ; Line 1
+    mov rdi, [renderer]
+    mov esi, 150
+    mov edx, 180
+    mov ecx, 500
+    mov r8d, 20
+    call SDL_RenderFillRect
+    ; Line 2
+    mov rdi, [renderer]
+    mov esi, 150
+    mov edx, 210
+    mov ecx, 500
+    mov r8d, 20
+    call SDL_RenderFillRect
+    ; Line 3
+    mov rdi, [renderer]
+    mov esi, 150
+    mov edx, 240
+    mov ecx, 500
+    mov r8d, 20
+    call SDL_RenderFillRect
+    ; Line 4
+    mov rdi, [renderer]
+    mov esi, 150
+    mov edx, 270
+    mov ecx, 500
+    mov r8d, 20
+    call SDL_RenderFillRect
+    jmp .present
+
+.draw_gameplay:
     ; Check Game Over
     cmp byte [game_state], 1
     je .game_over_screen
@@ -1211,9 +1385,9 @@ render:
     add rsp, 16
     
     mov eax, [pt_out]
-    mov [rbp - 32 + rcx*8], eax
+    mov [rsp - 32 + rcx*8], eax ; Using rsp for stack variables
     mov eax, [pt_out + 4]
-    mov [rbp - 32 + rcx*8 + 4], eax
+    mov [rsp - 32 + rcx*8 + 4], eax ; Using rsp for stack variables
     
     inc rcx
     jmp .proj_loop
@@ -1224,45 +1398,45 @@ render:
     ; call printf
 
     mov rdi, [renderer]
-    mov esi, [rbp - 32]
-    mov edx, [rbp - 32 + 4]
-    mov ecx, [rbp - 32 + 8]
-    mov r8d, [rbp - 32 + 12]
+    mov esi, [rsp - 32] ; Using rsp for stack variables
+    mov edx, [rsp - 32 + 4] ; Using rsp for stack variables
+    mov ecx, [rsp - 32 + 8] ; Using rsp for stack variables
+    mov r8d, [rsp - 32 + 12] ; Using rsp for stack variables
     call SDL_RenderDrawLine
     
     mov rdi, [renderer]
-    mov esi, [rbp - 32 + 8]
-    mov edx, [rbp - 32 + 12]
-    mov ecx, [rbp - 32 + 16]
-    mov r8d, [rbp - 32 + 20]
+    mov esi, [rsp - 32 + 8] ; Using rsp for stack variables
+    mov edx, [rsp - 32 + 12] ; Using rsp for stack variables
+    mov ecx, [rsp - 32 + 16] ; Using rsp for stack variables
+    mov r8d, [rsp - 32 + 20] ; Using rsp for stack variables
     call SDL_RenderDrawLine
     
     mov rdi, [renderer]
-    mov esi, [rbp - 32 + 16]
-    mov edx, [rbp - 32 + 20]
-    mov ecx, [rbp - 32]
-    mov r8d, [rbp - 32 + 4]
+    mov esi, [rsp - 32 + 16] ; Using rsp for stack variables
+    mov edx, [rsp - 32 + 20] ; Using rsp for stack variables
+    mov ecx, [rsp - 32] ; Using rsp for stack variables
+    mov r8d, [rsp - 32 + 4] ; Using rsp for stack variables
     call SDL_RenderDrawLine
     
     mov rdi, [renderer]
-    mov esi, [rbp - 32]
-    mov edx, [rbp - 32 + 4]
-    mov ecx, [rbp - 32 + 24]
-    mov r8d, [rbp - 32 + 28]
+    mov esi, [rsp - 32] ; Using rsp for stack variables
+    mov edx, [rsp - 32 + 4] ; Using rsp for stack variables
+    mov ecx, [rsp - 32 + 24] ; Using rsp for stack variables
+    mov r8d, [rsp - 32 + 28] ; Using rsp for stack variables
     call SDL_RenderDrawLine
     
     mov rdi, [renderer]
-    mov esi, [rbp - 32 + 8]
-    mov edx, [rbp - 32 + 12]
-    mov ecx, [rbp - 32 + 24]
-    mov r8d, [rbp - 32 + 28]
+    mov esi, [rsp - 32 + 8] ; Using rsp for stack variables
+    mov edx, [rsp - 32 + 12] ; Using rsp for stack variables
+    mov ecx, [rsp - 32 + 24] ; Using rsp for stack variables
+    mov r8d, [rsp - 32 + 28] ; Using rsp for stack variables
     call SDL_RenderDrawLine
     
     mov rdi, [renderer]
-    mov esi, [rbp - 32 + 16]
-    mov edx, [rbp - 32 + 20]
-    mov ecx, [rbp - 32 + 24]
-    mov r8d, [rbp - 32 + 28]
+    mov esi, [rsp - 32 + 16] ; Using rsp for stack variables
+    mov edx, [rsp - 32 + 20] ; Using rsp for stack variables
+    mov ecx, [rsp - 32 + 24] ; Using rsp for stack variables
+    mov r8d, [rsp - 32 + 28] ; Using rsp for stack variables
     call SDL_RenderDrawLine
     
     ; Draw HUD
@@ -1419,6 +1593,5 @@ render:
     mov rdi, [renderer]
     call SDL_RenderPresent
     
-    add rsp, 128
-    pop rbp
     ret
+
