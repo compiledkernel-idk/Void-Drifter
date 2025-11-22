@@ -135,7 +135,7 @@ Square wave generation at 44.1kHz sample rate:
 
 ## License
 
-This software is provided as-is for educational and entertainment purposes.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Build Warnings
 
