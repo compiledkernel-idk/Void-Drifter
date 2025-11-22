@@ -10,11 +10,12 @@ extern SDL_CreateWindow
 extern SDL_CreateRenderer
 extern SDL_SetRenderDrawColor
 extern SDL_RenderClear
+extern SDL_RenderDrawLine
+extern SDL_RenderDrawPoint
 extern SDL_RenderPresent
 extern SDL_PollEvent
 extern SDL_Quit
 extern SDL_Delay
-extern SDL_RenderDrawLine
 extern SDL_GetTicks
 extern rand
 extern exit
@@ -83,11 +84,15 @@ section .bss
     ; Bullets: x, y, z, active (16 bytes)
     bullets resd 4 * 20
     
-    ; Enemies: x, y, z, active (16 bytes)
-    enemies resd 4 * 10
+    ; Enemies: x, y, z, active, type, health (20 bytes)
+    ; type: 0=Scout(fast,small,2pts), 1=Fighter(normal,1pt), 2=Bomber(slow,large,5pts,2hp)
+    enemies resd 5 * 10
     
     ; Explosions: x, y, z, timer (16 bytes, timer counts down from 10)
     explosions resd 4 * 10
+    
+    ; Stars: x, y, z (12 bytes, 50 stars for background)
+    stars resd 3 * 50
 
 section .text
     global main
@@ -124,6 +129,9 @@ main:
     
     ; Init Sound
     call InitSound
+    
+    ; Init Stars - DISABLED
+    ; call init_stars
     
     
 .loop:
@@ -171,7 +179,7 @@ main:
     cmp rcx, 10
     je .clear_explosions
     mov dword [rbx + 12], 0
-    add rbx, 16
+    add rbx, 20
     inc rcx
     jmp .clear_enemies_loop
     
@@ -188,6 +196,9 @@ main:
     jmp .clear_explosions_loop
     
 .normal_update:
+    ; Reinit stars - DISABLED
+    ; call init_stars
+    
     cmp byte [game_state], 0
     jne .skip_update
     call update
@@ -420,7 +431,7 @@ update:
     je .move_enemies
     cmp dword [rbx + 12], 0
     je .spawn_enemy
-    add rbx, 16
+    add rbx, 20
     inc rcx
     jmp .find_enemy
     
@@ -443,6 +454,21 @@ update:
     movss [rbx + 8], xmm0 ; Z = 50 (Far)
     
     mov dword [rbx + 12], 1
+    
+    ; Random enemy type (0-2)
+    call rand
+    xor edx, edx
+    mov edi, 3
+    div edi
+    mov [rbx + 16], dl  ; type (byte)
+    
+    ; Set health based on type
+    cmp dl, 2           ; Bomber?
+    jne .not_bomber
+    mov byte [rbx + 17], 2  ; 2 HP
+    jmp .move_enemies
+.not_bomber:
+    mov byte [rbx + 17], 1  ; 1 HP
     
 .move_enemies:
     mov rcx, 0
@@ -593,7 +619,7 @@ update:
     pop rcx
     
 .next_enemy:
-    add rbx, 16
+    add rbx, 20
     inc rcx
     jmp .enemy_loop
     
@@ -615,6 +641,88 @@ update:
     jmp .explosion_loop
     
 .done_explosions:
+    ; ; Update stars - DISABLED
+    ; mov rcx, 0
+    ; lea rbx, [stars]
+;.star_loop:
+;    cmp rcx, 50
+;    je .done_stars
+;    
+;    ; Move star toward camera (z -= 0.5)
+;    movss xmm0, [rbx + 8]
+;    movss xmm1, [half_float]
+;    subss xmm0, xmm1
+;    
+;    ; Wrap if behind camera (z < 0)
+;    xorps xmm2, xmm2
+;    ucomiss xmm0, xmm2
+;    jb .reset_star
+;    
+;    movss [rbx + 8], xmm0
+;    jmp .next_star
+;    
+;.reset_star:
+;    ; Reset to far distance (40-60)
+;    call rand
+;    xor edx, edx
+;    mov edi, 20
+;    div edi
+;    add edx, 40
+;    cvtsi2ss xmm0, edx
+;    movss [rbx + 8], xmm0
+;    
+;.next_star:
+;    add rbx, 12
+;    inc rcx
+;    jmp .star_loop
+;    
+;.done_stars:
+    pop rbp
+    ret
+
+; init_stars - Initialize star positions
+init_stars:
+    push rbp
+    mov rbp, rsp
+    
+    mov rcx, 0
+    lea rbx, [stars]
+.init_loop:
+    cmp rcx, 50
+    je .done_init
+    
+    ; Random X (-400 to 400)
+    call rand
+    xor edx, edx
+    mov edi, 800
+    div edi
+    sub edx, 400
+    cvtsi2ss xmm0, edx
+    movss [rbx], xmm0
+    
+    ; Random Y (-300 to 300)
+    call rand
+    xor edx, edx
+    mov edi, 600
+    div edi
+    sub edx, 300
+    cvtsi2ss xmm0, edx
+    movss [rbx + 4], xmm0
+    
+    ; Random Z (10 to 50)
+    call rand
+    xor edx, edx
+    mov edi, 40
+    div edi
+    add edx, 10
+    cvtsi2ss xmm0, edx
+    movss [rbx + 8], xmm0
+    
+    add rbx, 12
+    inc rcx
+    jmp .init_loop
+    
+.done_init:
     pop rbp
     ret
 
@@ -660,6 +768,7 @@ section .data
     abs_mask dd 0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF
     one_float dd 1.0
     diff_scale dd 0.2
+    half_float dd 0.5
 
 section .text
 
@@ -682,6 +791,52 @@ render:
     mov rdi, [renderer]
     call SDL_RenderClear
     
+    ; Draw Stars (white dots) - DISABLED FOR TESTING
+    ; mov rdi, [renderer]
+    ; mov rsi, 255
+    ; mov rdx, 255
+    ; mov rcx, 255
+    ; mov r8, 255
+    ; call SDL_SetRenderDrawColor
+    ; 
+    ; mov rcx, 0
+    ; lea rbx, [stars]
+;.draw_stars:
+;    cmp rcx, 50
+;    je .draw_bullets
+;    
+;    ; Project star
+;    movss xmm0, [rbx]
+;    movss xmm1, [rbx + 4]
+;    movss xmm2, [rbx + 8]
+;    subss xmm2, [cam_z]
+;    
+;    sub rsp, 16
+;    movss [rsp], xmm0
+;    movss [rsp+4], xmm1
+;    movss [rsp+8], xmm2
+;    lea rdi, [pt_out]
+;    mov rsi, rsp
+;    call ProjectPoint
+;    add rsp, 16
+;    
+;    cmp eax, 0
+;    je .next_star
+;    
+;    ; Draw as small line (1 pixel)
+;    mov edi, [pt_out]
+;    mov esi, [pt_out + 4]
+;    mov rdi, [renderer]
+;    mov ecx, esi
+;    mov r8d, esi
+;    call SDL_RenderDrawLine
+;    
+;.next_star:
+;    add rbx, 12
+;    inc rcx
+;    jmp .draw_stars
+    
+.draw_bullets:
     ; Draw Bullets (Yellow Lines)
     mov rdi, [renderer]
     mov rsi, 255
@@ -691,9 +846,8 @@ render:
     call SDL_SetRenderDrawColor
     
     mov rcx, 0
-    mov rcx, 0
     lea rbx, [bullets]
-.draw_bullets:
+.bullet_loop:
     cmp rcx, 20
     je .draw_enemies
     cmp dword [rbx + 12], 1
@@ -745,27 +899,56 @@ render:
 .next_draw_bullet:
     add rbx, 16
     inc rcx
-    jmp .draw_bullets
+    jmp .bullet_loop
     
 .draw_enemies:
-    ; Draw Enemies (Red Cubes)
+    ; Enemy colors will vary by type - set later per enemy
+    mov rcx, 0
+    lea rbx, [enemies]
+.draw_enemy_loop:
+    cmp rcx, 10
+    je .draw_explosions
+    cmp dword [rbx + 12], 1
+    jne .next_draw_enemy
+    
+    ; Set color based on type
+    mov al, [rbx + 16]  ; Get type
+    cmp al, 0           ; Scout?
+    je .set_green
+    cmp al, 2           ; Bomber?
+    je .set_yellow
+    
+    ; Fighter (red)
     mov rdi, [renderer]
     mov rsi, 255
     mov rdx, 0
     mov rcx, 0
     mov r8, 255
     call SDL_SetRenderDrawColor
+    jmp .draw_this_enemy
     
+.set_green:
+    ; Scout (green)
+    mov rdi, [renderer]
+    mov rsi, 0
+    mov rdx, 255
     mov rcx, 0
-    lea rbx, [enemies]
-.draw_enemy_loop:
-    cmp rcx, 10
-    je .draw_ship
-    cmp dword [rbx + 12], 1
-    jne .next_draw_enemy
+    mov r8, 255
+    call SDL_SetRenderDrawColor
+    jmp .draw_this_enemy
     
-    push rcx ; Save loop counter
-    push rax ; Align stack
+.set_yellow:
+    ; Bomber (yellow)
+    mov rdi, [renderer]
+    mov rsi, 255
+    mov rdx, 255
+    mov rcx, 0
+    mov r8, 255
+    call SDL_SetRenderDrawColor
+    
+.draw_this_enemy:
+    push rcx
+    push rax
     
     ; Draw Cube (Just front face for speed)
     ; V0 (-1, -1, -1) + Pos
@@ -823,56 +1006,71 @@ render:
     mov esi, [pt_out]
     mov edx, [pt_out + 4]
     
-    ; Draw larger square outline (30x30)
     push rcx
     push rax
     
+    ; Get size based on type: Scout=10, Fighter=15, Bomber=25
+    xor r12d, r12d
+    mov r12b, [rbx + 16]
+    cmp r12b, 0
+    je .size_scout
+    cmp r12b, 2
+    je .size_bomber
+    mov r12d, 15
+    jmp .draw_square
+.size_scout:
+    mov r12d, 10
+    jmp .draw_square
+.size_bomber:
+    mov r12d, 25
+    
+.draw_square:
     ; Top line
     mov rdi, [renderer]
     mov ecx, esi
-    sub ecx, 15
+    sub ecx, r12d
     mov r8d, edx
-    sub r8d, 15
+    sub r8d, r12d
     push rsi
     mov esi, ecx
     pop rcx
-    add ecx, 30
+    lea ecx, [ecx + r12d * 2]
     call SDL_RenderDrawLine
     
     ; Bottom line
     mov rdi, [renderer]
     mov ecx, esi
-    sub ecx, 15
+    sub ecx, r12d
     mov r8d, edx
-    add r8d, 15
+    add r8d, r12d
     push rsi
     mov esi, ecx
     pop rcx
-    add ecx, 30
+    lea ecx, [ecx + r12d * 2]
     call SDL_RenderDrawLine
     
     ; Left line
     mov rdi, [renderer]
     mov ecx, esi
-    sub ecx, 15
+    sub ecx, r12d
     mov r8d, edx
-    sub r8d, 15
+    sub r8d, r12d
     push rdx
     mov edx, r8d
     pop r8
-    add r8d, 30
+    lea r8d, [r8d + r12d * 2]
     call SDL_RenderDrawLine
     
     ; Right line
     mov rdi, [renderer]
     mov ecx, esi
-    add ecx, 15
+    add ecx, r12d
     mov r8d, edx
-    sub r8d, 15
+    sub r8d, r12d
     push rdx
     mov edx, r8d
     pop r8
-    add r8d, 30
+    lea r8d, [r8d + r12d * 2]
     call SDL_RenderDrawLine
     
     pop rax
@@ -883,7 +1081,7 @@ render:
     pop rcx ; Restore loop counter
     
 .next_draw_enemy:
-    add rbx, 16
+    add rbx, 20
     inc rcx
     jmp .draw_enemy_loop
     
