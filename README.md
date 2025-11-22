@@ -31,6 +31,18 @@ Void Drifter 3D is a real-time arcade shooter written entirely in NASM assembly.
 - SDL2 development libraries
 - GNU Make
 
+## Clone the repository
+
+```bash
+git clone https://github.com/compiledkernel-idk/Void-Drifter.git
+```
+
+Navigate to the repository directory:
+
+```bash
+cd Void-Drifter
+```
+
 ## Compilation
 
 ```bash
