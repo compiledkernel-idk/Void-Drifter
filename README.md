@@ -1,5 +1,7 @@
 # Void Drifter 3D
 
+![Void Drifter 3D](image.png)
+
 A 3D space shooter implemented in x86-64 assembly language using SDL2 for rendering and audio.
 
 ## Technical Overview
