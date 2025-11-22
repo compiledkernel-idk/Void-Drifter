@@ -147,6 +147,44 @@ Square wave generation at 44.1kHz sample rate:
 - Single-threaded execution
 - No save/load functionality
 
+## Contributing
+
+Contributions are welcome! Here's how you can help:
+
+### Reporting Issues
+
+- Use the [GitHub Issues](https://github.com/compiledkernel-idk/Void-Drifter/issues) page
+- Include steps to reproduce the bug
+- Specify your system configuration (OS, SDL2 version)
+
+### Submitting Code
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Make your changes
+4. Test compilation and gameplay
+5. Commit with clear messages (`git commit -m "Add feature: description"`)
+6. Push to your fork (`git push origin feature/your-feature`)
+7. Open a Pull Request
+
+### Development Guidelines
+
+- Follow existing assembly code style
+- Add comments for complex logic
+- Test on Linux x86-64 before submitting
+- Update README if adding features
+- Maintain MIT license headers in new files
+
+### Ideas for Contributions
+
+- Port to other platforms (Windows, macOS)
+- Add more enemy types or patterns
+- Implement power-up system
+- Add background music
+- Improve 3D rendering (textures, lighting)
+- Add multiplayer support
+- Create level progression system
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
