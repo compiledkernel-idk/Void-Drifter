@@ -1,6 +1,7 @@
 ; Void Drifter 3D - Main Game Loop
 ; Copyright (c) 2025 Void Drifter 3D Contributors
 ; SPDX-License-Identifier: MIT
+; Am i Terry Davis? 
 
 default rel
 
