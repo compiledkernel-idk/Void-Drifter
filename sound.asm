@@ -1,5 +1,7 @@
 ; Sound System for Void Drifter
-; Uses SDL_OpenAudioDevice
+; Copyright (c) 2025 Void Drifter 3D Contributors
+; SPDX-License-Identifier: MIT
+
 
 extern SDL_OpenAudioDevice
 extern SDL_PauseAudioDevice

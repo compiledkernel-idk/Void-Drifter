@@ -1,4 +1,7 @@
 ; 3D Models for Void Drifter
+; Copyright (c) 2025 Void Drifter 3D Contributors
+; SPDX-License-Identifier: MIT
+
 
 section .data
     global ship_model

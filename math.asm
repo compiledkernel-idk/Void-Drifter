@@ -1,4 +1,7 @@
 ; 3D Math Library for Void Drifter
+; Copyright (c) 2025 Void Drifter 3D Contributors
+; SPDX-License-Identifier: MIT
+
 ; Uses SSE for performance
 
 section .text
