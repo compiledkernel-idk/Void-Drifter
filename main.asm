@@ -2,6 +2,7 @@
 ; Copyright (c) 2025 Void Drifter 3D Contributors
 ; SPDX-License-Identifier: MIT
 ; Am i Terry Davis? 
+; code currently contains errors that will be fixed soon
 
 default rel
 
