@@ -2,7 +2,7 @@
 ; Copyright (c) 2025 Void Drifter 3D Contributors
 ; SPDX-License-Identifier: MIT
 ; Am i Terry Davis? 
-; code currently contains errors that will be fixed soon
+; code currently contains errors that will be fixed soon for playable version use tag v1.1.0 or download newest release from github
 
 default rel
 
