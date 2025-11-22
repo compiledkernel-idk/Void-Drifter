@@ -1,0 +1,38 @@
+# Compiled binaries
+*.o
+*.out
+game
+
+# Build artifacts
+*.a
+*.so
+*.dylib
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+core
+core.*
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
+.directory
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Screenshots (keep only image.png)
+Screenshot*.png
+screenshot*.png
