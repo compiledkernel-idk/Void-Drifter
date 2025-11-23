@@ -1,10 +1,16 @@
 all: game
 
-game: main.o math.o data.o sound.o
-	gcc -no-pie -o game main.o math.o data.o sound.o -lSDL2 -lm
+game: main.o math.o data.o sound.o render.o update.o
+	gcc -no-pie -o game main.o math.o data.o sound.o render.o update.o -lSDL2 -lSDL2_mixer -lm
 
 main.o: main.asm
-	nasm -f elf64 main.asm -o main.o
+	nasm -O0 -f elf64 main.asm -o main.o
+
+render.o: render.asm
+	nasm -O0 -f elf64 render.asm -o render.o
+
+update.o: update.asm
+	nasm -O0 -f elf64 update.asm -o update.o
 
 math.o: math.asm
 	nasm -f elf64 math.asm -o math.o

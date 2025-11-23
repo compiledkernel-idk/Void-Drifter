@@ -5,10 +5,15 @@
 
 extern SDL_OpenAudioDevice
 extern SDL_PauseAudioDevice
-extern calloc
+extern Mix_OpenAudio
+extern Mix_LoadMUS
+extern Mix_PlayMusic
+extern Mix_Init
+extern printf
 
 section .bss
     audio_spec resb 32 ; SDL_AudioSpec
+    music_handle dq 0
     
 section .data
     dev_id dd 0
@@ -19,10 +24,15 @@ section .data
     sound_freq dd 0
     phase dd 0.0
     
+    music_file db "assets/terrariakoning.mp3", 0
+    music_err_msg db "Failed to load music", 10, 0
+    
 section .text
     global InitSound
     global AudioCallback
+    global AudioCallback
     global PlaySound
+    global PlayBackgroundMusic
 
 ; InitSound()
 InitSound:
@@ -54,6 +64,41 @@ InitSound:
     call SDL_PauseAudioDevice
     
     mov eax, 1
+    pop rbp
+    ret
+
+PlayBackgroundMusic:
+    push rbp
+    mov rbp, rsp
+    
+    ; Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048)
+    ; MIX_DEFAULT_FORMAT = 0x8010 (AUDIO_S16LSB)
+    mov rdi, 44100
+    mov rsi, 0x8010
+    mov rdx, 2
+    mov rcx, 2048
+    call Mix_OpenAudio
+    
+    ; Load Music
+    mov rdi, music_file
+    call Mix_LoadMUS
+    mov [music_handle], rax
+    
+    cmp rax, 0
+    je .err
+    
+    ; Play Music (handle, loops=-1)
+    mov rdi, rax
+    mov rsi, -1
+    call Mix_PlayMusic
+    jmp .done
+    
+.err:
+    ; mov rdi, music_err_msg
+    ; xor rax, rax
+    ; call printf
+    
+.done:
     pop rbp
     ret
 
